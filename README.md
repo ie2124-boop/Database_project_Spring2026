@@ -5,7 +5,7 @@ Group project for CSCI-UA 60 Database Design and Implementation
 
 **Group Member**: Itgel Enkh-Amgalan (ie2124), Rundong Luo (rl5232), Yuchen Shi (ys6132), Rachel Te (rt2778)  
 
-*Under construction...*
+*Under construction...* \
 Milestone 1: ERD draft, ERD analysis report ✅
 Milestone 2: Updated entity-relationship tables, database implementation ✅
 Milestone 3: Update database population data, web interface development with Flask ⏳
