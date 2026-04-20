@@ -8,7 +8,7 @@ Group project for CSCI-UA 60 Database Design and Implementation
 *Under construction...* \
 Milestone 1: ERD draft, ERD analysis report ✅ \
 Milestone 2: Updated entity-relationship tables, database implementation ✅ \
-Milestone 3 (final): Update database population data, web interface development with Flask ⏳ \
+Milestone 3 (final): Update database population data, web interface development with Flask ⏳ 
 
 
 A relational database system designed to manage the complex operations of Last Resort Hotels, a rapidly expanding luxury hotel chain. The system models and tracks rooms (sleeping rooms, suites, and meeting rooms), reservations, guests, hosts, events, facility usage, billing, and staff activity across multiple buildings, floors, and wings.
