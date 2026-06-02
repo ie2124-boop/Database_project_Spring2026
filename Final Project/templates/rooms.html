@@ -1,0 +1,315 @@
+{% extends 'base.html' %}
+
+{% block container %}
+<section class="pageHeader">
+  <p class="sectionTag">Room Information</p>
+  <h1>Rooms</h1>
+  <p>This page shows room availability, room status, reservation trends, and room status records.</p>
+</section>
+
+{% if pageMessage %}
+  <section class="noticeBox {% if pageMessageType == 'error' %}noticeError{% else %}noticeSuccess{% endif %}">
+    <p>{{ pageMessage }}</p>
+  </section>
+{% endif %}
+
+<section class="dataCard">
+  <h3>Search Room Availability</h3>
+  <form class="reservationForm availabilityForm" method="GET" action="{{ url_for('rooms_page') }}">
+    <label>
+      Start Date
+      <input type="date" name="start" value="{{ startDate }}">
+    </label>
+    <label>
+      End Date
+      <input type="date" name="end" value="{{ endDate }}">
+    </label>
+    <input type="hidden" name="status" value="{{ statusDate }}">
+    <button type="submit">Search</button>
+  </form>
+  <p class="searchNote">Showing rooms available from {{ startDate }} to {{ endDate }} after filtering out active stays and maintenance blocks.</p>
+  <p class="searchNote">Current system date: {{ snapshotDate }}.</p>
+</section>
+
+<section class="dataCard">
+  <h3>Room Availability</h3>
+  <table class="minimalTable">
+    <thead>
+      <tr>
+        <th>Room</th>
+        <th>Wing</th>
+        <th>Use</th>
+        <th>Capacity</th>
+        <th>Base Rate</th>
+        <th>Status</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for room in availableRooms %}
+        <tr>
+          <td>{{ room.roomNum }}</td>
+          <td>{{ room.wingCode }}</td>
+          <td>{{ room.roomUse }}</td>
+          <td>{{ room.capacity }}</td>
+          <td>${{ '%.2f'|format(room.baseRate) }}</td>
+          <td>{{ room.currentStatus }}</td>
+        </tr>
+      {% else %}
+        <tr>
+          <td colspan="6">No rooms are available in the selected date range.</td>
+        </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</section>
+
+<div class="dashboardGrid">
+  <section class="dataCard">
+    <h3>Room Status Summary</h3>
+    <form class="searchForm statusForm" method="GET" action="{{ url_for('rooms_page') }}">
+      <input type="hidden" name="start" value="{{ startDate }}">
+      <input type="hidden" name="end" value="{{ endDate }}">
+      <label>
+        Status Date
+        <input type="date" name="status" value="{{ statusDate }}">
+      </label>
+      <button type="submit">View Status</button>
+    </form>
+    <p class="searchNote">Showing room status for {{ statusDate }}. Maintenance rooms on this date: {{ maintenanceCount }}.</p>
+    <table class="minimalTable">
+      <thead>
+        <tr>
+          <th>Status</th>
+          <th>Rooms</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for row in roomStatusSummary %}
+          <tr>
+            <td>{{ row.statusType }}</td>
+            <td>{{ row.roomCount }}</td>
+          </tr>
+        {% else %}
+          <tr>
+            <td colspan="2">No room status information is available.</td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </section>
+
+  <section class="dataCard">
+    <h3>Reservation Trend</h3>
+    <div class="trendChart">
+      {% for row in reservationTrends %}
+        <div class="trendRow">
+          <span class="trendMonth">{{ row.stayMonth }}</span>
+          <div class="trendBar">
+            <div class="trendBarFill" style="width: {{ row.barWidth }}%;"></div>
+          </div>
+          <span class="trendValue">{{ row.reservationCount }}</span>
+        </div>
+      {% else %}
+        <p class="searchNote">No reservation trend data is available.</p>
+      {% endfor %}
+    </div>
+    <p class="searchNote">Bar length shows how many reservations start in each month.</p>
+    <table class="minimalTable">
+      <thead>
+        <tr>
+          <th>Month</th>
+          <th>Reservations</th>
+          <th>Room Nights</th>
+          <th>Expected Guests</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for row in reservationTrends %}
+          <tr>
+            <td>{{ row.stayMonth }}</td>
+            <td>{{ row.reservationCount }}</td>
+            <td>{{ row.roomNights }}</td>
+            <td>{{ row.expectedGuests }}</td>
+          </tr>
+        {% else %}
+          <tr>
+            <td colspan="4">No reservation trend data is available.</td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </section>
+</div>
+
+<section class="dataCard">
+  <h3>Add Room Status</h3>
+  <form class="crudForm" method="POST" action="{{ url_for('create_room_status') }}">
+    <input type="hidden" name="startDate" value="{{ startDate }}">
+    <input type="hidden" name="endDate" value="{{ endDate }}">
+    <input type="hidden" name="statusDate" value="{{ statusDate }}">
+    <div class="formGrid">
+      <label>
+        Room
+        <select name="roomId" required>
+          <option value="">Choose room</option>
+          {% for room in roomOptions %}
+            <option value="{{ room.roomId }}">{{ room.roomNum }}</option>
+          {% endfor %}
+        </select>
+      </label>
+      <label>
+        Status Type
+        <select name="statusType" required>
+          <option value="">Choose status</option>
+          {% for statusType in roomStatusTypes %}
+            <option value="{{ statusType }}">{{ statusType }}</option>
+          {% endfor %}
+        </select>
+      </label>
+      <label>
+        Start Date
+        <input type="date" name="startTime" value="{{ currentDateInput }}" required>
+      </label>
+      <label>
+        End Date
+        <input type="date" name="endTime" value="{{ currentDateInput }}" required>
+      </label>
+      <label>
+        Employee
+        <select name="employeeId">
+          <option value="">No employee listed</option>
+          {% for employee in employeeOptions %}
+            <option value="{{ employee.employeeId }}">{{ employee.label }}</option>
+          {% endfor %}
+        </select>
+      </label>
+      <label class="fullWidth">
+        Notes
+        <textarea name="notes" rows="3"></textarea>
+      </label>
+    </div>
+    <div class="buttonRow">
+      <button type="submit">Add Room Status</button>
+    </div>
+  </form>
+</section>
+
+<section class="dataCard">
+  <h3>Room Status Records</h3>
+  <table class="minimalTable">
+    <thead>
+      <tr>
+        <th>Room</th>
+        <th>Status</th>
+        <th>Start</th>
+        <th>End</th>
+        <th>Employee</th>
+        <th>Notes</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for row in roomStatusRecords %}
+        <tr class="{% if row.statusId == selectedStatusId %}selectedRow{% endif %}">
+          <td>
+            <a href="{{ url_for('rooms_page', start=startDate, end=endDate, status=statusDate, statusId=row.statusId) }}">
+              {{ row.roomNum }}
+            </a>
+          </td>
+          <td>{{ row.statusType }}</td>
+          <td>{{ row.startTime }}</td>
+          <td>{{ row.endTime }}</td>
+          <td>{{ row.employeeName }}</td>
+          <td>{{ row.notes or 'No notes' }}</td>
+        </tr>
+      {% else %}
+        <tr>
+          <td colspan="6">No room status records are available.</td>
+        </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</section>
+
+<section class="dataCard">
+  <h3>Edit Selected Status</h3>
+  {% if selectedRoomStatus %}
+    <form class="crudForm" method="POST" action="{{ url_for('update_room_status') }}">
+      <input type="hidden" name="startDate" value="{{ startDate }}">
+      <input type="hidden" name="endDate" value="{{ endDate }}">
+      <input type="hidden" name="statusDate" value="{{ statusDate }}">
+      <input type="hidden" name="statusId" value="{{ selectedRoomStatus.statusId }}">
+      <div class="formGrid">
+        <label>
+          Room
+          <select name="roomId" required>
+            <option value="">Choose room</option>
+            {% for room in roomOptions %}
+              <option
+                value="{{ room.roomId }}"
+                {% if selectedRoomStatus.roomId == room.roomId %}selected{% endif %}
+              >
+                {{ room.roomNum }}
+              </option>
+            {% endfor %}
+          </select>
+        </label>
+        <label>
+          Status Type
+          <select name="statusType" required>
+            <option value="">Choose status</option>
+            {% for statusType in roomStatusTypes %}
+              <option
+                value="{{ statusType }}"
+                {% if selectedRoomStatus.statusType == statusType %}selected{% endif %}
+              >
+                {{ statusType }}
+              </option>
+            {% endfor %}
+          </select>
+        </label>
+        <label>
+          Start Date
+          <input type="date" name="startTime" value="{{ selectedRoomStatus.startInput }}" required>
+        </label>
+        <label>
+          End Date
+          <input type="date" name="endTime" value="{{ selectedRoomStatus.endInput }}" required>
+        </label>
+        <label>
+          Employee
+          <select name="employeeId">
+            <option value="">No employee listed</option>
+            {% for employee in employeeOptions %}
+              <option
+                value="{{ employee.employeeId }}"
+                {% if selectedRoomStatus.employeeId == employee.employeeId %}selected{% endif %}
+              >
+                {{ employee.label }}
+              </option>
+            {% endfor %}
+          </select>
+        </label>
+        <label class="fullWidth">
+          Notes
+          <textarea name="notes" rows="3">{{ selectedRoomStatus.notes }}</textarea>
+        </label>
+      </div>
+      <div class="buttonRow">
+        <button type="submit">Update Status</button>
+      </div>
+    </form>
+
+    <div class="buttonRow topGap">
+      <form class="inlineForm" method="POST" action="{{ url_for('delete_room_status') }}">
+        <input type="hidden" name="startDate" value="{{ startDate }}">
+        <input type="hidden" name="endDate" value="{{ endDate }}">
+        <input type="hidden" name="statusDate" value="{{ statusDate }}">
+        <input type="hidden" name="statusId" value="{{ selectedRoomStatus.statusId }}">
+        <button class="dangerButton" type="submit">Delete Status</button>
+      </form>
+    </div>
+  {% else %}
+    <p>Select a room status record from the table before editing or deleting it.</p>
+  {% endif %}
+</section>
+{% endblock %}

@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ pageTitle or "Last Resort Hotel" }}</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/main.css') }}">
+    <link rel="shortcut icon" href="data:image/x-icon;," type="image/x-icon">
+  </head>
+  <body>
+    <div class="pageShell">
+      <header class="siteHeader">
+        <div class="brandBlock">
+          <p class="eyebrow">CSCI-UA 60 Final Project</p>
+          <a class="brandMark" href="{{ url_for('home') }}">LAST RESORT HOTEL</a>
+        </div>
+
+        <nav class="siteNav">
+          <a class="{% if request.path == '/' %}selectedNav{% endif %}" href="{{ url_for('home') }}">Home</a>
+          <a class="{% if request.path == '/operations' %}selectedNav{% endif %}" href="{{ url_for('operations_page') }}">Operations</a>
+          <a class="{% if request.path == '/reservations' %}selectedNav{% endif %}" href="{{ url_for('reservations_page') }}">Reservations</a>
+          <a class="{% if request.path == '/rooms' %}selectedNav{% endif %}" href="{{ url_for('rooms_page') }}">Rooms</a>
+          <a class="{% if request.path == '/billing' %}selectedNav{% endif %}" href="{{ url_for('billing') }}">Billing</a>
+          <a class="{% if request.path == '/guests' %}selectedNav{% endif %}" href="{{ url_for('guests_page') }}">Guests</a>
+        </nav>
+      </header>
+
+      <main class="pageContent">
+        {% block container %}{% endblock %}
+      </main>
+
+      <footer class="siteFooter">
+        <div class="footerBrand">
+          <p class="footerTitle">LAST RESORT HOTEL</p>
+          <p>Internal data management system for the database final project.</p>
+          <p>Current system date: {{ snapshotDate }}</p>
+        </div>
+      </footer>
+    </div>
+  </body>
+</html>

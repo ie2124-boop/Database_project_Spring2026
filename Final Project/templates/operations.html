@@ -1,0 +1,412 @@
+{% extends 'base.html' %}
+
+{% block container %}
+<section class="pageHeader">
+  <p class="sectionTag">Operations Information</p>
+  <h1>Operations</h1>
+  <p>This page shows current guests and manages events, event room usage, and event guest links.</p>
+</section>
+
+{% if pageMessage %}
+  <section class="noticeBox {% if pageMessageType == 'error' %}noticeError{% else %}noticeSuccess{% endif %}">
+    <p>{{ pageMessage }}</p>
+  </section>
+{% endif %}
+
+<section class="dataCard">
+  <h3>Add Event</h3>
+  <form class="crudForm" method="POST" action="{{ url_for('create_event') }}">
+    <div class="formGrid">
+      <label>
+        Event Name
+        <input type="text" name="eventName" required>
+      </label>
+      <label>
+        Host Party
+        <select name="hostPartyId">
+          <option value="">No host party</option>
+          {% for party in partyOptions %}
+            <option value="{{ party.partyId }}">{{ party.label }}</option>
+          {% endfor %}
+        </select>
+      </label>
+      <label>
+        Billed Party
+        <select name="billedPartyId" required>
+          <option value="">Choose billed party</option>
+          {% for party in partyOptions %}
+            <option value="{{ party.partyId }}">{{ party.label }}</option>
+          {% endfor %}
+        </select>
+      </label>
+      <label>
+        Start Date
+        <input type="date" name="startDate" value="{{ currentDate }}" required>
+      </label>
+      <label>
+        End Date
+        <input type="date" name="endDate" value="{{ currentDate }}" required>
+      </label>
+      <label>
+        Estimated Attendance
+        <input type="number" name="estimatedAttendance" min="0">
+      </label>
+      <label>
+        Estimated Staying Guests
+        <input type="number" name="estimatedGuestCount" min="0">
+      </label>
+    </div>
+    <div class="buttonRow">
+      <button type="submit">Add Event</button>
+    </div>
+  </form>
+</section>
+
+<div class="dashboardGrid">
+  <section class="dataCard">
+    <h3>Current Guests</h3>
+    <table class="minimalTable">
+      <thead>
+        <tr>
+          <th>Guest</th>
+          <th>Room</th>
+          <th>Organization</th>
+          <th>Upcoming Event</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for guest in currentGuests %}
+          <tr>
+            <td>
+              <a href="{{ url_for('guests_page', guestId=guest.guestId) }}">
+                {{ guest.guestName }}
+              </a>
+            </td>
+            <td>{{ guest.roomNum }} / {{ guest.wingCode }}</td>
+            <td>{{ guest.affiliations }}</td>
+            <td>{{ guest.upcomingEvents }}</td>
+          </tr>
+        {% else %}
+          <tr>
+            <td colspan="4">No guests are currently checked in.</td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </section>
+
+  <section class="dataCard">
+    <h3>Active and Upcoming Events</h3>
+    <table class="minimalTable">
+      <thead>
+        <tr>
+          <th>Status</th>
+          <th>Event</th>
+          <th>Date</th>
+          <th>Host</th>
+          <th>Rooms</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for event in upcomingEvents %}
+          <tr class="{% if event.eventId == selectedEventId %}selectedRow{% endif %}">
+            <td>{{ event.eventStatus }}</td>
+            <td>
+              <a href="{{ url_for('operations_page', eventId=event.eventId) }}">
+                {{ event.eventName }}
+              </a>
+            </td>
+            <td>{{ event.dateLabel }}</td>
+            <td>{{ event.hostName }}</td>
+            <td>{{ event.scheduledRooms }}</td>
+          </tr>
+        {% else %}
+          <tr>
+            <td colspan="5">No active or upcoming events fall in the current seven-day window.</td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </section>
+</div>
+
+<section class="dataCard">
+  <h3>Selected Event</h3>
+  {% if selectedEvent %}
+    <form class="crudForm" method="POST" action="{{ url_for('update_event') }}">
+      <input type="hidden" name="eventId" value="{{ selectedEvent.eventId }}">
+      <div class="formGrid">
+        <label>
+          Event Name
+          <input type="text" name="eventName" value="{{ selectedEvent.eventName }}" required>
+        </label>
+        <label>
+          Host Party
+          <select name="hostPartyId">
+            <option value="">No host party</option>
+            {% for party in partyOptions %}
+              <option
+                value="{{ party.partyId }}"
+                {% if selectedEvent.hostPartyId == party.partyId %}selected{% endif %}
+              >
+                {{ party.label }}
+              </option>
+            {% endfor %}
+          </select>
+        </label>
+        <label>
+          Billed Party
+          <select name="billedPartyId" required>
+            <option value="">Choose billed party</option>
+            {% for party in partyOptions %}
+              <option
+                value="{{ party.partyId }}"
+                {% if selectedEvent.billedPartyId == party.partyId %}selected{% endif %}
+              >
+                {{ party.label }}
+              </option>
+            {% endfor %}
+          </select>
+        </label>
+        <label>
+          Start Date
+          <input type="date" name="startDate" value="{{ selectedEvent.startDate }}" required>
+        </label>
+        <label>
+          End Date
+          <input type="date" name="endDate" value="{{ selectedEvent.endDate }}" required>
+        </label>
+        <label>
+          Estimated Attendance
+          <input
+            type="number"
+            name="estimatedAttendance"
+            min="0"
+            value="{{ selectedEvent.estimatedAttendance if selectedEvent.estimatedAttendance is not none else '' }}"
+          >
+        </label>
+        <label>
+          Estimated Staying Guests
+          <input
+            type="number"
+            name="estimatedGuestCount"
+            min="0"
+            value="{{ selectedEvent.estimatedGuestCount if selectedEvent.estimatedGuestCount is not none else '' }}"
+          >
+        </label>
+      </div>
+      <div class="buttonRow">
+        <button type="submit">Update Event</button>
+      </div>
+    </form>
+
+    <div class="buttonRow topGap">
+      {% if selectedEventCanDelete %}
+        <form class="inlineForm" method="POST" action="{{ url_for('delete_event') }}">
+          <input type="hidden" name="eventId" value="{{ selectedEvent.eventId }}">
+          <button class="dangerButton" type="submit">Delete Event</button>
+        </form>
+      {% else %}
+        <p class="searchNote">This event has linked billing records and cannot be deleted.</p>
+      {% endif %}
+    </div>
+
+    <dl class="infoList guestSummaryGrid topGap">
+      <div>
+        <dt>Event ID</dt>
+        <dd>{{ selectedEvent.eventId }}</dd>
+      </div>
+      <div>
+        <dt>Host Party</dt>
+        <dd>{{ selectedEvent.hostLabel }}</dd>
+      </div>
+      <div>
+        <dt>Billed Party</dt>
+        <dd>{{ selectedEvent.billedLabel }}</dd>
+      </div>
+      <div>
+        <dt>Date Range</dt>
+        <dd>{{ selectedEvent.startDate }} to {{ selectedEvent.endDate }}</dd>
+      </div>
+    </dl>
+  {% else %}
+    <p>Select an event from the list to update it or manage linked records.</p>
+  {% endif %}
+</section>
+
+<div class="dashboardGrid">
+  <section class="dataCard">
+    <h3>Event Room Usage</h3>
+    {% if selectedEvent %}
+      <form class="crudForm" method="POST" action="{{ url_for('create_event_room_usage') }}">
+        <input type="hidden" name="eventId" value="{{ selectedEvent.eventId }}">
+        <div class="formGrid">
+          <label>
+            Room
+            <select name="roomId" required>
+              <option value="">Choose room</option>
+              {% for room in eventRoomOptions %}
+                <option value="{{ room.roomId }}">{{ room.roomNum }}</option>
+              {% endfor %}
+            </select>
+          </label>
+          <label>
+            Usage Date
+            <input type="date" name="usageDate" value="{{ selectedEvent.startDate }}" required>
+          </label>
+          <label>
+            Usage Slot
+            <select name="usageSlot" required>
+              <option value="">Choose slot</option>
+              <option value="BREAKFAST">BREAKFAST</option>
+              <option value="MORNING">MORNING</option>
+              <option value="LUNCH">LUNCH</option>
+              <option value="AFTERNOON">AFTERNOON</option>
+              <option value="SUPPER">SUPPER</option>
+              <option value="EVENING">EVENING</option>
+              <option value="NIGHT">NIGHT</option>
+            </select>
+          </label>
+          <label class="checkboxLabel">
+            <input type="checkbox" name="isEatingUsage" value="1">
+            Eating Use
+          </label>
+        </div>
+        <div class="buttonRow">
+          <button type="submit">Add Room Usage</button>
+        </div>
+      </form>
+
+      <table class="minimalTable">
+        <thead>
+          <tr>
+            <th>Room</th>
+            <th>Date</th>
+            <th>Slot</th>
+            <th>Eating Use</th>
+            <th>Delete</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for usage in selectedEventRoomUsages %}
+            <tr>
+              <td>{{ usage.roomNum }}</td>
+              <td>{{ usage.usageDate }}</td>
+              <td>{{ usage.usageSlot }}</td>
+              <td>{{ usage.isEatingLabel }}</td>
+              <td>
+                <form class="inlineForm" method="POST" action="{{ url_for('delete_event_room_usage') }}">
+                  <input type="hidden" name="eventId" value="{{ selectedEvent.eventId }}">
+                  <input type="hidden" name="usageId" value="{{ usage.usageId }}">
+                  <button class="dangerButton" type="submit">Delete</button>
+                </form>
+              </td>
+            </tr>
+          {% else %}
+            <tr>
+              <td colspan="5">No room usage records are linked to this event.</td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    {% else %}
+      <p>Select an event before adding room usage.</p>
+    {% endif %}
+  </section>
+
+  <section class="dataCard">
+    <h3>Event Guests</h3>
+    {% if selectedEvent %}
+      <form class="crudForm" method="POST" action="{{ url_for('create_event_guest') }}">
+        <input type="hidden" name="eventId" value="{{ selectedEvent.eventId }}">
+        <div class="formGrid">
+          <label>
+            Guest
+            <select name="guestId" required>
+              <option value="">Choose guest</option>
+              {% for guest in guestOptions %}
+                <option value="{{ guest.guestId }}">{{ guest.guestName }}</option>
+              {% endfor %}
+            </select>
+          </label>
+          <label>
+            Role
+            <input type="text" name="roleName" placeholder="Attendee">
+          </label>
+        </div>
+        <div class="buttonRow">
+          <button type="submit">Add Event Guest</button>
+        </div>
+      </form>
+
+      <table class="minimalTable">
+        <thead>
+          <tr>
+            <th>Guest</th>
+            <th>Role</th>
+            <th>Delete</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for guest in selectedEventGuests %}
+            <tr>
+              <td>
+                <a href="{{ url_for('guests_page', guestId=guest.guestId) }}">
+                  {{ guest.guestName }}
+                </a>
+              </td>
+              <td>{{ guest.roleName }}</td>
+              <td>
+                <form class="inlineForm" method="POST" action="{{ url_for('delete_event_guest') }}">
+                  <input type="hidden" name="eventId" value="{{ selectedEvent.eventId }}">
+                  <input type="hidden" name="guestId" value="{{ guest.guestId }}">
+                  <button class="dangerButton" type="submit">Delete</button>
+                </form>
+              </td>
+            </tr>
+          {% else %}
+            <tr>
+              <td colspan="3">No guest links are recorded for this event.</td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    {% else %}
+      <p>Select an event before adding guest links.</p>
+    {% endif %}
+  </section>
+</div>
+
+<section class="dataCard">
+  <h3>Event Guest Counts</h3>
+  <p class="searchNote">The first count shows linked guest records. The second count shows the expected number of hotel guests for the event.</p>
+  <table class="minimalTable">
+    <thead>
+      <tr>
+        <th>Event</th>
+        <th>Date</th>
+        <th>Linked Guest Records</th>
+        <th>Estimated Hotel Guests</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for row in eventGuestCounts %}
+        <tr class="{% if row.eventId == selectedEventId %}selectedRow{% endif %}">
+          <td>
+            <a href="{{ url_for('operations_page', eventId=row.eventId) }}">
+              {{ row.eventName }}
+            </a>
+          </td>
+          <td>{{ row.startDate }}</td>
+          <td>{{ row.linkedGuests }}</td>
+          <td>{{ row.estimatedGuestCount }}</td>
+        </tr>
+      {% else %}
+        <tr>
+          <td colspan="4">No event guest counts are available in the current window.</td>
+        </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</section>
+{% endblock %}

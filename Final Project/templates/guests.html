@@ -1,0 +1,261 @@
+{% extends 'base.html' %}
+
+{% block container %}
+<section class="pageHeader">
+  <p class="sectionTag">Guest Information</p>
+  <h1>Guests</h1>
+  <p>This page manages guest records, guest messages, and guest-specific service use.</p>
+</section>
+
+{% if pageMessage %}
+  <section class="noticeBox {% if pageMessageType == 'error' %}noticeError{% else %}noticeSuccess{% endif %}">
+    <p>{{ pageMessage }}</p>
+  </section>
+{% endif %}
+
+<section class="dataCard">
+  <h3>Search Guests</h3>
+  <form class="searchForm" method="GET" action="{{ url_for('guests_page') }}">
+    <label>
+      Guest Name or ID
+      <input type="text" name="search" value="{{ searchText }}">
+    </label>
+    <button type="submit">Search</button>
+  </form>
+</section>
+
+<section class="dataCard">
+  <h3>Add Guest</h3>
+  <form class="crudForm" method="POST" action="{{ url_for('create_guest') }}">
+    <div class="formGrid">
+      <label>
+        First Name
+        <input type="text" name="firstName" required>
+      </label>
+      <label>
+        Last Name
+        <input type="text" name="lastName" required>
+      </label>
+      <label>
+        Email Address
+        <input type="email" name="emailAddress">
+      </label>
+      <label>
+        Phone Number
+        <input type="text" name="phoneNumber">
+      </label>
+      <label>
+        PIN Code
+        <input type="text" name="pinCode" required>
+      </label>
+      <label class="checkboxLabel">
+        <input type="checkbox" name="isConfidential" value="1">
+        Confidential Guest
+      </label>
+    </div>
+    <div class="buttonRow">
+      <button type="submit">Add Guest</button>
+    </div>
+  </form>
+</section>
+
+<section class="guestInfoCard">
+  <h2>Selected Guest</h2>
+  {% if selectedGuestProfile %}
+    <form class="crudForm" method="POST" action="{{ url_for('update_guest') }}">
+      <input type="hidden" name="guestId" value="{{ selectedGuestProfile.guestId }}">
+      <input type="hidden" name="search" value="{{ searchText }}">
+      <div class="formGrid">
+        <label>
+          First Name
+          <input type="text" name="firstName" value="{{ selectedGuestProfile.firstName }}" required>
+        </label>
+        <label>
+          Last Name
+          <input type="text" name="lastName" value="{{ selectedGuestProfile.lastName }}" required>
+        </label>
+        <label>
+          Email Address
+          <input type="email" name="emailAddress" value="{{ selectedGuestProfile.emailAddress or '' }}">
+        </label>
+        <label>
+          Phone Number
+          <input type="text" name="phoneNumber" value="{{ selectedGuestProfile.phoneNumber or '' }}">
+        </label>
+        <label>
+          PIN Code
+          <input type="text" name="pinCode" value="{{ selectedGuestProfile.pinCode }}" required>
+        </label>
+        <label class="checkboxLabel">
+          <input
+            type="checkbox"
+            name="isConfidential"
+            value="1"
+            {% if selectedGuestProfile.isConfidential == 1 %}checked{% endif %}
+          >
+          Confidential Guest
+        </label>
+      </div>
+      <div class="buttonRow">
+        <button type="submit">Update Guest</button>
+      </div>
+    </form>
+
+    <div class="buttonRow topGap">
+      {% if selectedGuestCanDelete %}
+        <form class="inlineForm" method="POST" action="{{ url_for('delete_guest') }}">
+          <input type="hidden" name="guestId" value="{{ selectedGuestProfile.guestId }}">
+          <input type="hidden" name="search" value="{{ searchText }}">
+          <button class="dangerButton" type="submit">Delete Guest</button>
+        </form>
+      {% else %}
+        <p class="searchNote">This guest has linked history and cannot be deleted.</p>
+      {% endif %}
+    </div>
+
+    <dl class="infoList guestSummaryGrid topGap">
+      <div>
+        <dt>Guest ID</dt>
+        <dd>{{ selectedGuestProfile.guestId }}</dd>
+      </div>
+      <div>
+        <dt>Reservation ID</dt>
+        <dd>{{ selectedGuestProfile.reservationIds }}</dd>
+      </div>
+      <div>
+        <dt>Assigned Room</dt>
+        <dd>{{ selectedGuestProfile.assignedRooms }}</dd>
+      </div>
+      <div>
+        <dt>Latest Location</dt>
+        <dd>{{ selectedGuestProfile.lastKnownLocation }}</dd>
+      </div>
+      <div>
+        <dt>Latest Message</dt>
+        <dd>{{ selectedGuestProfile.messageContent }}</dd>
+      </div>
+      <div>
+        <dt>Contact Access</dt>
+        <dd>
+          {% if selectedGuestProfile.isConfidential == 1 %}
+            Confidential
+          {% else %}
+            Standard
+          {% endif %}
+        </dd>
+      </div>
+    </dl>
+  {% else %}
+    <p>No guest matches the current search.</p>
+  {% endif %}
+</section>
+
+<div class="dashboardGrid">
+  <section class="dataCard">
+    <h3>Selected Guest Service Use</h3>
+    <table class="minimalTable">
+      <thead>
+        <tr>
+          <th>Charge Type</th>
+          <th>Uses</th>
+          <th>Total</th>
+          <th>Last Used</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for row in selectedGuestServices %}
+          <tr>
+            <td>{{ row.chargeType }}</td>
+            <td>{{ row.serviceCount }}</td>
+            <td>${{ '%.2f'|format(row.totalAmount) }}</td>
+            <td>{{ row.lastUsedAt }}</td>
+          </tr>
+        {% else %}
+          <tr>
+            <td colspan="4">No guest-specific service charges are recorded for this guest.</td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </section>
+
+  <section class="dataCard">
+    <h3>Guest Messages</h3>
+    {% if selectedGuestProfile %}
+      <form class="crudForm" method="POST" action="{{ url_for('create_guest_message') }}">
+        <input type="hidden" name="guestId" value="{{ selectedGuestProfile.guestId }}">
+        <input type="hidden" name="search" value="{{ searchText }}">
+        <label>
+          New Message
+          <textarea name="messageContent" rows="3" required></textarea>
+        </label>
+        <div class="buttonRow">
+          <button type="submit">Add Message</button>
+        </div>
+      </form>
+
+      <table class="minimalTable">
+        <thead>
+          <tr>
+            <th>Time</th>
+            <th>Message</th>
+            <th>Delete</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for message in selectedGuestMessages %}
+            <tr>
+              <td>{{ message.messageTime }}</td>
+              <td>{{ message.messageContent }}</td>
+              <td>
+                <form class="inlineForm" method="POST" action="{{ url_for('delete_guest_message') }}">
+                  <input type="hidden" name="guestId" value="{{ selectedGuestProfile.guestId }}">
+                  <input type="hidden" name="messageId" value="{{ message.messageId }}">
+                  <input type="hidden" name="search" value="{{ searchText }}">
+                  <button class="dangerButton" type="submit">Delete</button>
+                </form>
+              </td>
+            </tr>
+          {% else %}
+            <tr>
+              <td colspan="3">No messages are recorded for this guest.</td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    {% else %}
+      <p>Select a guest before adding or deleting messages.</p>
+    {% endif %}
+  </section>
+</div>
+
+<section class="dataCard">
+  <h3>Guest Contact Snapshot</h3>
+  <table class="minimalTable">
+    <thead>
+      <tr>
+        <th>Guest</th>
+        <th>Location</th>
+        <th>Message</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for guest in guestContacts %}
+        <tr class="{% if guest.guestId == selectedGuestId %}selectedRow{% endif %}">
+          <td>
+            <a href="{{ url_for('guests_page', guestId=guest.guestId, search=searchText) }}">
+              {{ guest.guestName }}
+            </a>
+          </td>
+          <td>{{ guest.lastKnownLocation }}</td>
+          <td>{{ guest.messageContent }}</td>
+        </tr>
+      {% else %}
+        <tr>
+          <td colspan="3">No guests match the current search.</td>
+        </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</section>
+{% endblock %}

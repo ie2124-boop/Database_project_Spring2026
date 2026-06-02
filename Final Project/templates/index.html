@@ -1,0 +1,30 @@
+{% extends 'base.html' %}
+
+{% block container %}
+<section class="pageHeader">
+  <p class="sectionTag">Internal System</p>
+  <h1>Home</h1>
+  <p>This page is a simple overview for the hotel database project. Use the subpages for detailed room, operations, and billing information.</p>
+</section>
+
+<section class="photoPanel">
+  <img
+    src="{{ url_for('static', filename='decoration/building.jpg') }}"
+    alt="Last Resort Hotel building"
+    class="buildingPhoto"
+  >
+</section>
+
+<section class="summaryPanel">
+  <h2>Overview</h2>
+  <p class="searchNote">Default date uses the current system date: {{ snapshotDate }}</p>
+  <div class="summaryList">
+    {% for card in summaryCards %}
+      <div class="summaryItem">
+        <p class="summaryLabel">{{ card.label }}</p>
+        <p class="summaryNumber">{{ card.value }}</p>
+      </div>
+    {% endfor %}
+  </div>
+</section>
+{% endblock %}

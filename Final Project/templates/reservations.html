@@ -1,0 +1,435 @@
+{% extends 'base.html' %}
+
+{% block container %}
+<section class="pageHeader">
+  <p class="sectionTag">Reservation Information</p>
+  <h1>Reservations</h1>
+  <p>This page manages reservations, stay room assignments, and assignment guest links.</p>
+</section>
+
+{% if pageMessage %}
+  <section class="noticeBox {% if pageMessageType == 'error' %}noticeError{% else %}noticeSuccess{% endif %}">
+    <p>{{ pageMessage }}</p>
+  </section>
+{% endif %}
+
+<section class="dataCard">
+  <h3>Search Reservations</h3>
+  <form class="searchForm" method="GET" action="{{ url_for('reservations_page') }}">
+    <label>
+      Reservation ID or Booked By
+      <input type="text" name="search" value="{{ searchText }}">
+    </label>
+    <button type="submit">Search</button>
+  </form>
+</section>
+
+<section class="dataCard">
+  <h3>Add Reservation</h3>
+  <form class="crudForm" method="POST" action="{{ url_for('create_reservation') }}">
+    <input type="hidden" name="search" value="{{ searchText }}">
+    <div class="formGrid">
+      <label>
+        Booked By Party
+        <select name="bookedByPartyId" required>
+          <option value="">Choose booked by party</option>
+          {% for party in partyOptions %}
+            <option value="{{ party.partyId }}">{{ party.label }}</option>
+          {% endfor %}
+        </select>
+      </label>
+      <label>
+        Billing Party
+        <select name="billingPartyId" required>
+          <option value="">Choose billing party</option>
+          {% for party in partyOptions %}
+            <option value="{{ party.partyId }}">{{ party.label }}</option>
+          {% endfor %}
+        </select>
+      </label>
+      <label>
+        Booking Date
+        <input type="date" name="bookingDate" value="{{ currentDate }}" required>
+      </label>
+      <label>
+        Check-In Date
+        <input type="date" name="plannedCheckInDate" value="{{ currentDate }}" required>
+      </label>
+      <label>
+        Check-Out Date
+        <input type="date" name="plannedCheckOutDate" value="{{ currentDate }}" required>
+      </label>
+      <label>
+        Reservation Status
+        <select name="reservationStatus" required>
+          {% for status in reservationStatusTypes %}
+            <option value="{{ status }}">{{ status }}</option>
+          {% endfor %}
+        </select>
+      </label>
+      <label>
+        Advance Deposit
+        <input type="number" step="0.01" min="0" name="advanceDeposit" value="0">
+      </label>
+    </div>
+    <div class="buttonRow">
+      <button type="submit">Add Reservation</button>
+    </div>
+  </form>
+</section>
+
+<section class="dataCard">
+  <h3>Selected Reservation</h3>
+  {% if selectedReservation %}
+    <form class="crudForm" method="POST" action="{{ url_for('update_reservation') }}">
+      <input type="hidden" name="reservationId" value="{{ selectedReservation.reservationId }}">
+      <input type="hidden" name="search" value="{{ searchText }}">
+      <div class="formGrid">
+        <label>
+          Booked By Party
+          <select name="bookedByPartyId" required>
+            {% for party in partyOptions %}
+              <option
+                value="{{ party.partyId }}"
+                {% if selectedReservation.bookedByPartyId == party.partyId %}selected{% endif %}
+              >
+                {{ party.label }}
+              </option>
+            {% endfor %}
+          </select>
+        </label>
+        <label>
+          Billing Party
+          <select name="billingPartyId" required>
+            {% for party in partyOptions %}
+              <option
+                value="{{ party.partyId }}"
+                {% if selectedReservation.billingPartyId == party.partyId %}selected{% endif %}
+              >
+                {{ party.label }}
+              </option>
+            {% endfor %}
+          </select>
+        </label>
+        <label>
+          Booking Date
+          <input type="date" name="bookingDate" value="{{ selectedReservation.bookingDate }}" required>
+        </label>
+        <label>
+          Check-In Date
+          <input type="date" name="plannedCheckInDate" value="{{ selectedReservation.plannedCheckInDate }}" required>
+        </label>
+        <label>
+          Check-Out Date
+          <input type="date" name="plannedCheckOutDate" value="{{ selectedReservation.plannedCheckOutDate }}" required>
+        </label>
+        <label>
+          Reservation Status
+          <select name="reservationStatus" required>
+            {% for status in reservationStatusTypes %}
+              <option
+                value="{{ status }}"
+                {% if selectedReservation.reservationStatus == status %}selected{% endif %}
+              >
+                {{ status }}
+              </option>
+            {% endfor %}
+          </select>
+        </label>
+        <label>
+          Advance Deposit
+          <input
+            type="number"
+            step="0.01"
+            min="0"
+            name="advanceDeposit"
+            value="{{ selectedReservation.advanceDeposit }}"
+          >
+        </label>
+      </div>
+      <div class="buttonRow">
+        <button type="submit">Update Reservation</button>
+      </div>
+    </form>
+
+    <div class="buttonRow topGap">
+      {% if selectedReservationCanDelete %}
+        <form class="inlineForm" method="POST" action="{{ url_for('delete_reservation') }}">
+          <input type="hidden" name="reservationId" value="{{ selectedReservation.reservationId }}">
+          <input type="hidden" name="search" value="{{ searchText }}">
+          <button class="dangerButton" type="submit">Delete Reservation</button>
+        </form>
+      {% else %}
+        <p class="searchNote">This reservation has linked assignments or billing records and cannot be deleted.</p>
+      {% endif %}
+    </div>
+
+    <dl class="infoList guestSummaryGrid topGap">
+      <div>
+        <dt>Reservation ID</dt>
+        <dd>{{ selectedReservation.reservationId }}</dd>
+      </div>
+      <div>
+        <dt>Booked By</dt>
+        <dd>{{ selectedReservation.bookedByLabel }}</dd>
+      </div>
+      <div>
+        <dt>Billing Party</dt>
+        <dd>{{ selectedReservation.billingLabel }}</dd>
+      </div>
+      <div>
+        <dt>Room Assignments</dt>
+        <dd>{{ selectedReservation.assignmentCount }}</dd>
+      </div>
+      <div>
+        <dt>Accounts</dt>
+        <dd>{{ selectedReservation.accountCount }}</dd>
+      </div>
+      <div>
+        <dt>Status</dt>
+        <dd>{{ selectedReservation.reservationStatus }}</dd>
+      </div>
+    </dl>
+  {% else %}
+    <p>No reservation matches the current search.</p>
+  {% endif %}
+</section>
+
+<div class="dashboardGrid">
+  <section class="dataCard">
+    <h3>Room Assignments</h3>
+    {% if selectedReservation %}
+      <form class="crudForm" method="POST" action="{{ url_for('create_stay_assignment') }}">
+        <input type="hidden" name="reservationId" value="{{ selectedReservation.reservationId }}">
+        <input type="hidden" name="search" value="{{ searchText }}">
+        <div class="formGrid">
+          <label>
+            Room
+            <select name="roomId" required>
+              <option value="">Choose room</option>
+              {% for room in sleepRoomOptions %}
+                <option value="{{ room.roomId }}">{{ room.roomNum }}</option>
+              {% endfor %}
+            </select>
+          </label>
+          <label>
+            Assignment Status
+            <select name="assignmentStatus" required>
+              {% for status in assignmentStatusTypes %}
+                <option value="{{ status }}">{{ status }}</option>
+              {% endfor %}
+            </select>
+          </label>
+          <label>
+            Start Date
+            <input type="date" name="assignedStartDate" value="{{ selectedReservation.plannedCheckInDate }}" required>
+          </label>
+          <label>
+            End Date
+            <input type="date" name="assignedEndDate" value="{{ selectedReservation.plannedCheckOutDate }}">
+          </label>
+        </div>
+        <div class="buttonRow">
+          <button type="submit">Add Assignment</button>
+        </div>
+      </form>
+
+      <table class="minimalTable">
+        <thead>
+          <tr>
+            <th>Room</th>
+            <th>Dates</th>
+            <th>Status</th>
+            <th>Guests</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for assignment in selectedAssignments %}
+            <tr class="{% if assignment.stayAssignmentId == selectedAssignmentId %}selectedRow{% endif %}">
+              <td>
+                <a href="{{ url_for('reservations_page', reservationId=selectedReservation.reservationId, assignmentId=assignment.stayAssignmentId, search=searchText) }}">
+                  {{ assignment.roomNum }}
+                </a>
+              </td>
+              <td>{{ assignment.assignedStartDate }} to {{ assignment.assignedEndDate or 'Open' }}</td>
+              <td>{{ assignment.assignmentStatus }}</td>
+              <td>{{ assignment.occupantSummary }}</td>
+            </tr>
+          {% else %}
+            <tr>
+              <td colspan="4">No room assignments are linked to this reservation.</td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    {% else %}
+      <p>Select a reservation before adding or editing room assignments.</p>
+    {% endif %}
+  </section>
+
+  <section class="dataCard">
+    <h3>Selected Assignment</h3>
+    {% if selectedAssignment %}
+      <form class="crudForm" method="POST" action="{{ url_for('update_stay_assignment') }}">
+        <input type="hidden" name="reservationId" value="{{ selectedReservation.reservationId }}">
+        <input type="hidden" name="stayAssignmentId" value="{{ selectedAssignment.stayAssignmentId }}">
+        <input type="hidden" name="search" value="{{ searchText }}">
+        <div class="formGrid">
+          <label>
+            Room
+            <select name="roomId" required>
+              {% for room in sleepRoomOptions %}
+                <option
+                  value="{{ room.roomId }}"
+                  {% if selectedAssignment.roomId == room.roomId %}selected{% endif %}
+                >
+                  {{ room.roomNum }}
+                </option>
+              {% endfor %}
+            </select>
+          </label>
+          <label>
+            Assignment Status
+            <select name="assignmentStatus" required>
+              {% for status in assignmentStatusTypes %}
+                <option
+                  value="{{ status }}"
+                  {% if selectedAssignment.assignmentStatus == status %}selected{% endif %}
+                >
+                  {{ status }}
+                </option>
+              {% endfor %}
+            </select>
+          </label>
+          <label>
+            Start Date
+            <input type="date" name="assignedStartDate" value="{{ selectedAssignment.assignedStartDate }}" required>
+          </label>
+          <label>
+            End Date
+            <input type="date" name="assignedEndDate" value="{{ selectedAssignment.assignedEndDate or '' }}">
+          </label>
+        </div>
+        <div class="buttonRow">
+          <button type="submit">Update Assignment</button>
+        </div>
+      </form>
+
+      <div class="buttonRow topGap">
+        {% if selectedAssignmentCanDelete %}
+          <form class="inlineForm" method="POST" action="{{ url_for('delete_stay_assignment') }}">
+            <input type="hidden" name="reservationId" value="{{ selectedReservation.reservationId }}">
+            <input type="hidden" name="stayAssignmentId" value="{{ selectedAssignment.stayAssignmentId }}">
+            <input type="hidden" name="search" value="{{ searchText }}">
+            <button class="dangerButton" type="submit">Delete Assignment</button>
+          </form>
+        {% else %}
+          <p class="searchNote">This assignment has linked guests or charges and cannot be deleted.</p>
+        {% endif %}
+      </div>
+
+      <h4 class="minorHeading">Assignment Guests</h4>
+      <form class="crudForm" method="POST" action="{{ url_for('create_assignment_guest') }}">
+        <input type="hidden" name="reservationId" value="{{ selectedReservation.reservationId }}">
+        <input type="hidden" name="stayAssignmentId" value="{{ selectedAssignment.stayAssignmentId }}">
+        <input type="hidden" name="search" value="{{ searchText }}">
+        <div class="formGrid">
+          <label>
+            Guest
+            <select name="guestId" required>
+              <option value="">Choose guest</option>
+              {% for guest in guestOptions %}
+                <option value="{{ guest.guestId }}">{{ guest.guestName }}</option>
+              {% endfor %}
+            </select>
+          </label>
+          <label>
+            Occupant Role
+            <select name="occupantRole" required>
+              {% for role in occupantRoleTypes %}
+                <option value="{{ role }}">{{ role }}</option>
+              {% endfor %}
+            </select>
+          </label>
+        </div>
+        <div class="buttonRow">
+          <button type="submit">Add Occupant</button>
+        </div>
+      </form>
+
+      <table class="minimalTable">
+        <thead>
+          <tr>
+            <th>Guest</th>
+            <th>Role</th>
+            <th>Delete</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for guest in selectedAssignmentGuests %}
+            <tr>
+              <td>
+                <a href="{{ url_for('guests_page', guestId=guest.guestId) }}">
+                  {{ guest.guestName }}
+                </a>
+              </td>
+              <td>{{ guest.occupantRole }}</td>
+              <td>
+                <form class="inlineForm" method="POST" action="{{ url_for('delete_assignment_guest') }}">
+                  <input type="hidden" name="reservationId" value="{{ selectedReservation.reservationId }}">
+                  <input type="hidden" name="stayAssignmentId" value="{{ selectedAssignment.stayAssignmentId }}">
+                  <input type="hidden" name="guestId" value="{{ guest.guestId }}">
+                  <input type="hidden" name="search" value="{{ searchText }}">
+                  <button class="dangerButton" type="submit">Delete</button>
+                </form>
+              </td>
+            </tr>
+          {% else %}
+            <tr>
+              <td colspan="3">No guests are linked to this assignment.</td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    {% else %}
+      <p>Select an assignment to edit it or manage assignment guests.</p>
+    {% endif %}
+  </section>
+</div>
+
+<section class="dataCard">
+  <h3>Reservation List</h3>
+  <table class="minimalTable">
+    <thead>
+      <tr>
+        <th>Reservation</th>
+        <th>Check-In</th>
+        <th>Check-Out</th>
+        <th>Status</th>
+        <th>Booked By</th>
+        <th>Accounts</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for reservation in reservationRows %}
+        <tr class="{% if reservation.reservationId == selectedReservationId %}selectedRow{% endif %}">
+          <td>
+            <a href="{{ url_for('reservations_page', reservationId=reservation.reservationId, search=searchText) }}">
+              {{ reservation.reservationId }}
+            </a>
+          </td>
+          <td>{{ reservation.plannedCheckInDate }}</td>
+          <td>{{ reservation.plannedCheckOutDate }}</td>
+          <td>{{ reservation.reservationStatus }}</td>
+          <td>{{ reservation.bookedByLabel }}</td>
+          <td>{{ reservation.accountCount }}</td>
+        </tr>
+      {% else %}
+        <tr>
+          <td colspan="6">No reservations match the current search.</td>
+        </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</section>
+{% endblock %}

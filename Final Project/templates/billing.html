@@ -1,0 +1,462 @@
+{% extends 'base.html' %}
+
+{% block container %}
+<section class="pageHeader">
+  <p class="sectionTag">Billing Information</p>
+  <h1>Billing</h1>
+  <p>This page manages accounts, charges, and payments while still showing balance summaries.</p>
+</section>
+
+{% if pageMessage %}
+  <section class="noticeBox {% if pageMessageType == 'error' %}noticeError{% else %}noticeSuccess{% endif %}">
+    <p>{{ pageMessage }}</p>
+  </section>
+{% endif %}
+
+<section class="dataCard">
+  <h3>Search Accounts</h3>
+  <form class="searchForm" method="GET" action="{{ url_for('billing') }}">
+    <label>
+      Account Name or ID
+      <input type="text" name="search" value="{{ searchText }}">
+    </label>
+    <button type="submit">Search</button>
+  </form>
+</section>
+
+<section class="dataCard">
+  <h3>Add Account</h3>
+  <form class="crudForm" method="POST" action="{{ url_for('create_account') }}">
+    <input type="hidden" name="search" value="{{ searchText }}">
+    <div class="formGrid">
+      <label>
+        Account Name
+        <input type="text" name="accountName" required>
+      </label>
+      <label>
+        Account Status
+        <select name="accountStatus" required>
+          {% for status in accountStatusTypes %}
+            <option value="{{ status }}">{{ status }}</option>
+          {% endfor %}
+        </select>
+      </label>
+      <label>
+        Reservation
+        <select name="reservationId">
+          <option value="">No reservation</option>
+          {% for reservation in reservationOptions %}
+            <option value="{{ reservation.reservationId }}">{{ reservation.displayLabel }}</option>
+          {% endfor %}
+        </select>
+      </label>
+      <label>
+        Event
+        <select name="eventId">
+          <option value="">No event</option>
+          {% for event in eventOptions %}
+            <option value="{{ event.eventId }}">{{ event.label }}</option>
+          {% endfor %}
+        </select>
+      </label>
+      <label>
+        Responsible Party
+        <select name="responsiblePartyId" required>
+          <option value="">Choose responsible party</option>
+          {% for party in partyOptions %}
+            <option value="{{ party.partyId }}">{{ party.label }}</option>
+          {% endfor %}
+        </select>
+      </label>
+      <label>
+        Responsibility Type
+        <select name="responsibilityType" required>
+          {% for responsibility in responsibilityTypes %}
+            <option value="{{ responsibility }}">{{ responsibility }}</option>
+          {% endfor %}
+        </select>
+      </label>
+      <label>
+        Responsibility Percent
+        <input type="number" step="0.01" min="0" max="100" name="responsibilityPercent">
+      </label>
+    </div>
+    <div class="buttonRow">
+      <button type="submit">Add Account</button>
+    </div>
+  </form>
+</section>
+
+<section class="billPanel">
+  {% if selectedAccount %}
+    <div class="billPanelHeader">
+      <div>
+        <p class="sectionTag">Selected Account</p>
+        <h2>Charges: ${{ '%.2f'|format(selectedAccount.totalCharges) }}</h2>
+      </div>
+      <div class="billMeta">
+        <p>Status: {{ selectedAccount.accountStatus }}</p>
+        <p>Payments: ${{ '%.2f'|format(selectedAccount.totalPayments) }}</p>
+        <p>Balance Due: ${{ '%.2f'|format(selectedAccount.balanceDue) }}</p>
+      </div>
+    </div>
+
+    <div class="billSummaryBar">
+      <span>{{ selectedAccount.accountName }}</span>
+      <span>{{ selectedAccount.responsibleParties }}</span>
+    </div>
+
+    <form class="crudForm" method="POST" action="{{ url_for('update_account') }}">
+      <input type="hidden" name="accountId" value="{{ selectedAccount.accountId }}">
+      <input type="hidden" name="search" value="{{ searchText }}">
+      <div class="formGrid">
+        <label>
+          Account Name
+          <input type="text" name="accountName" value="{{ selectedAccount.accountName }}" required>
+        </label>
+        <label>
+          Account Status
+          <select name="accountStatus" required>
+            {% for status in accountStatusTypes %}
+              <option
+                value="{{ status }}"
+                {% if selectedAccount.accountStatus == status %}selected{% endif %}
+              >
+                {{ status }}
+              </option>
+            {% endfor %}
+          </select>
+        </label>
+        <label>
+          Closed Time
+          <input type="datetime-local" name="closedAt" value="{{ selectedAccount.closedInput }}">
+        </label>
+      </div>
+      <div class="buttonRow">
+        <button type="submit">Update Account</button>
+      </div>
+    </form>
+
+    <div class="buttonRow topGap">
+      {% if selectedAccountCanDelete %}
+        <form class="inlineForm" method="POST" action="{{ url_for('delete_account') }}">
+          <input type="hidden" name="accountId" value="{{ selectedAccount.accountId }}">
+          <input type="hidden" name="search" value="{{ searchText }}">
+          <button class="dangerButton" type="submit">Delete Account</button>
+        </form>
+      {% else %}
+        <p class="searchNote">This account already has charges or payments and cannot be deleted.</p>
+      {% endif %}
+    </div>
+
+    <dl class="infoList guestSummaryGrid topGap">
+      <div>
+        <dt>Account ID</dt>
+        <dd>{{ selectedAccount.accountId }}</dd>
+      </div>
+      <div>
+        <dt>Opened At</dt>
+        <dd>{{ selectedAccount.openedAt }}</dd>
+      </div>
+      <div>
+        <dt>Reservation ID</dt>
+        <dd>{{ selectedAccount.reservationId or 'No reservation' }}</dd>
+      </div>
+      <div>
+        <dt>Event ID</dt>
+        <dd>{{ selectedAccount.eventId or 'No event' }}</dd>
+      </div>
+    </dl>
+
+    <h3 class="minorHeading">Responsible Parties</h3>
+    <table class="minimalTable">
+      <thead>
+        <tr>
+          <th>Party</th>
+          <th>Type</th>
+          <th>Percent</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for row in accountResponsibilities %}
+          <tr>
+            <td>{{ row.partyLabel }}</td>
+            <td>{{ row.responsibilityType }}</td>
+            <td>
+              {% if row.responsibilityPercent is not none %}
+                {{ row.responsibilityPercent }}%
+              {% else %}
+                Not listed
+              {% endif %}
+            </td>
+          </tr>
+        {% else %}
+          <tr>
+            <td colspan="3">No responsibility records are linked to this account.</td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  {% else %}
+    <p>No account matches the current search.</p>
+  {% endif %}
+</section>
+
+<div class="dashboardGrid">
+  <section class="dataCard">
+    <h3>Charges</h3>
+    {% if selectedAccount %}
+      <form class="crudForm" method="POST" action="{{ url_for('create_charge') }}">
+        <input type="hidden" name="accountId" value="{{ selectedAccount.accountId }}">
+        <input type="hidden" name="search" value="{{ searchText }}">
+        <div class="formGrid">
+          <label>
+            Charge Type
+            <select name="chargeType" required>
+              <option value="">Choose charge type</option>
+              {% for chargeType in chargeTypes %}
+                <option value="{{ chargeType }}">{{ chargeType }}</option>
+              {% endfor %}
+            </select>
+          </label>
+          <label>
+            Amount
+            <input type="number" step="0.01" min="0" name="amount" required>
+          </label>
+          <label>
+            Charge Time
+            <input type="datetime-local" name="chargeTime" value="{{ currentTimestampInput }}" required>
+          </label>
+          <label>
+            Used By Guest
+            <select name="usedByGuestId">
+              <option value="">No guest listed</option>
+              {% for guest in guestOptions %}
+                <option value="{{ guest.guestId }}">{{ guest.guestName }}</option>
+              {% endfor %}
+            </select>
+          </label>
+          <label>
+            Stay Assignment
+            <select name="stayAssignmentId">
+              <option value="">No stay assignment</option>
+              {% for assignment in stayAssignmentOptions %}
+                <option value="{{ assignment.stayAssignmentId }}">
+                  {{ assignment.roomNum }} ({{ assignment.assignedStartDate }})
+                </option>
+              {% endfor %}
+            </select>
+          </label>
+          <label>
+            Event
+            <select name="eventId">
+              <option value="">No event</option>
+              {% for event in eventOptions %}
+                <option value="{{ event.eventId }}">{{ event.label }}</option>
+              {% endfor %}
+            </select>
+          </label>
+          <label>
+            Created By Employee
+            <select name="createdByEmployeeId">
+              <option value="">No employee listed</option>
+              {% for employee in employeeOptions %}
+                <option value="{{ employee.employeeId }}">{{ employee.label }}</option>
+              {% endfor %}
+            </select>
+          </label>
+          <label class="fullWidth">
+            Description
+            <textarea name="description" rows="3"></textarea>
+          </label>
+        </div>
+        <div class="buttonRow">
+          <button type="submit">Add Charge</button>
+        </div>
+      </form>
+
+      <table class="minimalTable">
+        <thead>
+          <tr>
+            <th>Time</th>
+            <th>Charge Type</th>
+            <th>Description</th>
+            <th>Used By</th>
+            <th>Amount</th>
+            <th>Delete</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for line in accountLineItems %}
+            <tr>
+              <td>{{ line.chargeTime }}</td>
+              <td>{{ line.chargeType }}</td>
+              <td>{{ line.description or 'No description' }}</td>
+              <td>{{ line.usedByGuest }}</td>
+              <td>${{ '%.2f'|format(line.amount) }}</td>
+              <td>
+                <form class="inlineForm" method="POST" action="{{ url_for('delete_charge') }}">
+                  <input type="hidden" name="accountId" value="{{ selectedAccount.accountId }}">
+                  <input type="hidden" name="chargeId" value="{{ line.chargeId }}">
+                  <input type="hidden" name="search" value="{{ searchText }}">
+                  <button class="dangerButton" type="submit">Delete</button>
+                </form>
+              </td>
+            </tr>
+          {% else %}
+            <tr>
+              <td colspan="6">No charge lines match the current selection.</td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    {% else %}
+      <p>Select an account before adding charges.</p>
+    {% endif %}
+  </section>
+
+  <section class="dataCard">
+    <h3>Payments</h3>
+    {% if selectedAccount %}
+      <form class="crudForm" method="POST" action="{{ url_for('create_payment') }}">
+        <input type="hidden" name="accountId" value="{{ selectedAccount.accountId }}">
+        <input type="hidden" name="search" value="{{ searchText }}">
+        <div class="formGrid">
+          <label>
+            Paid By Party
+            <select name="paidByPartyId" required>
+              <option value="">Choose party</option>
+              {% for party in partyOptions %}
+                <option value="{{ party.partyId }}">{{ party.label }}</option>
+              {% endfor %}
+            </select>
+          </label>
+          <label>
+            Payment Method
+            <input type="text" name="paymentMethod" required>
+          </label>
+          <label>
+            Amount
+            <input type="number" step="0.01" min="0.01" name="amount" required>
+          </label>
+          <label>
+            Payment Time
+            <input type="datetime-local" name="paymentTime" value="{{ currentTimestampInput }}" required>
+          </label>
+          <label class="fullWidth">
+            Reference Number
+            <input type="text" name="referenceNumber">
+          </label>
+        </div>
+        <div class="buttonRow">
+          <button type="submit">Add Payment</button>
+        </div>
+      </form>
+
+      <table class="minimalTable">
+        <thead>
+          <tr>
+            <th>Time</th>
+            <th>Paid By</th>
+            <th>Method</th>
+            <th>Reference</th>
+            <th>Amount</th>
+            <th>Delete</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for payment in paymentRecords %}
+            <tr>
+              <td>{{ payment.paymentTime }}</td>
+              <td>{{ payment.paidByLabel }}</td>
+              <td>{{ payment.paymentMethod }}</td>
+              <td>{{ payment.referenceNumber or 'No reference' }}</td>
+              <td>${{ '%.2f'|format(payment.amount) }}</td>
+              <td>
+                <form class="inlineForm" method="POST" action="{{ url_for('delete_payment') }}">
+                  <input type="hidden" name="accountId" value="{{ selectedAccount.accountId }}">
+                  <input type="hidden" name="paymentId" value="{{ payment.paymentId }}">
+                  <input type="hidden" name="search" value="{{ searchText }}">
+                  <button class="dangerButton" type="submit">Delete</button>
+                </form>
+              </td>
+            </tr>
+          {% else %}
+            <tr>
+              <td colspan="6">No payments are linked to this account.</td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    {% else %}
+      <p>Select an account before adding payments.</p>
+    {% endif %}
+  </section>
+</div>
+
+<div class="billingBottomLayout">
+  <section class="dataCard">
+    <h3>Account Balances</h3>
+    <table class="minimalTable">
+      <thead>
+        <tr>
+          <th>Account</th>
+          <th>Status</th>
+          <th>Charges</th>
+          <th>Payments</th>
+          <th>Balance</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for account in accountBalances %}
+          <tr class="{% if account.accountId == selectedAccountId %}selectedRow{% endif %}">
+            <td>
+              <a href="{{ url_for('billing', accountId=account.accountId, search=searchText) }}">
+                {{ account.accountName }}
+              </a>
+            </td>
+            <td>{{ account.accountStatus }}</td>
+            <td>${{ '%.2f'|format(account.totalCharges) }}</td>
+            <td>${{ '%.2f'|format(account.totalPayments) }}</td>
+            <td>${{ '%.2f'|format(account.balanceDue) }}</td>
+          </tr>
+        {% else %}
+          <tr>
+            <td colspan="5">No accounts match the current search.</td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </section>
+
+  <section class="dataCard">
+    <h3>Revenue by Charge Type</h3>
+    <table class="minimalTable">
+      <thead>
+        <tr>
+          <th>Charge Type</th>
+          <th>Lines</th>
+          <th>Total</th>
+          <th>Average</th>
+          <th>Share</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for row in revenueBreakdown %}
+          <tr>
+            <td>{{ row.chargeType }}</td>
+            <td>{{ row.chargeLines }}</td>
+            <td>${{ '%.2f'|format(row.totalAmount) }}</td>
+            <td>${{ '%.2f'|format(row.avgChargeAmount) }}</td>
+            <td>{{ row.pctOfRevenue }}%</td>
+          </tr>
+        {% else %}
+          <tr>
+            <td colspan="5">No revenue data is available.</td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </section>
+</div>
+{% endblock %}
